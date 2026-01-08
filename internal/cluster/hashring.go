@@ -40,3 +40,16 @@ func (hr *HashRing) GetAddrFromKey(k []byte) (string, error) {
 	}
 	return hr.servers[hr.keys[idx]], nil
 }
+
+func (hr *HashRing) Remove(serverAddr string) {
+	keys := make([]uint32, 0, len(hr.keys)-hr.replicas)
+	for _, key := range hr.keys {
+		if hr.servers[key] == serverAddr {
+			delete(hr.servers, key)
+			continue
+		}
+		keys = append(keys, key)
+	}
+	// No need to sort again since we iterate over a sorted slice of keys (hashes)
+	hr.keys = keys
+}
