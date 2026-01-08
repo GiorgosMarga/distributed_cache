@@ -1,0 +1,52 @@
+syntax = "proto3";
+option go_package = "github.com/GiorgosMarga/distributed_cache/api/cachepb";
+package types;
+
+
+
+service CacheService {
+    rpc Get(GetRequest) returns (GetResponse);
+    rpc Set(SetRequest) returns (SetResponse);
+    rpc Delete(DeleteRequest) returns (DeleteResponse);
+    rpc Join(JoinRequest) returns (JoinResponse);
+}
+
+message GetRequest {
+  bytes key = 1;
+}
+
+message GetResponse {
+  bytes value = 1;
+  bool hit  = 2;
+}
+
+
+message SetRequest {
+  bytes key = 1;
+  bytes value = 2;
+  uint32 ttl  = 3;
+}
+
+
+message SetResponse {
+  bool success = 1;
+}
+
+message DeleteRequest {
+  bytes key = 1;
+}
+
+
+message DeleteResponse {
+  bool success = 1;
+}
+
+message JoinRequest {
+  string node_address = 1;
+  string target_address = 2;
+}
+
+
+message JoinResponse {
+  repeated string peer_addresses = 1;
+}
