@@ -9,6 +9,8 @@ service CacheService {
     rpc Set(SetRequest) returns (SetResponse);
     rpc Delete(DeleteRequest) returns (DeleteResponse);
     rpc Join(JoinRequest) returns (JoinResponse);
+    rpc Leave(LeaveRequest) returns (LeaveResponse);
+    rpc IsAlive(AliveRequest) returns (AliveResponse);
 }
 
 message GetRequest {
@@ -49,4 +51,20 @@ message JoinRequest {
 
 message JoinResponse {
   repeated string peer_addresses = 1;
+}
+
+message LeaveRequest {
+  string node_address = 1;
+}
+
+message LeaveResponse {
+  bool success = 1;
+}
+
+message AliveRequest {
+  string node_address = 1;
+}
+
+message AliveResponse {
+  bool success = 1;
 }

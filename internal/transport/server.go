@@ -217,12 +217,31 @@ func (s *Server) Delete(ctx context.Context, req *cachepb.DeleteRequest) (*cache
 	}, nil
 }
 
-func (s *Server) PrintPeers() {
+func (s *Server) IsAlive(ctx context.Context, req *cachepb.AliveRequest) (*cachepb.AliveResponse, error) {
+	from := req.GetNodeAddress()
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-	fmt.Printf("[%s]:", s.addr)
-	for p := range s.peers {
-		fmt.Printf("\t%s", p)
+	_, exists := s.peers[from]
+	s.mu.RUnlock()
+	if !exists {
+		return nil, fmt.Errorf("peer was not found")
 	}
-	fmt.Println()
+	return &cachepb.AliveResponse{
+		Success: true,
+	}, nil
+}
+
+func (s *Server) Leave(ctx context.Context, req *cachepb.LeaveRequest) (*cachepb.LeaveResponse, error) {
+	from := req.GetNodeAddress()
+	s.mu.RLock()
+	_, exists := s.peers[from]
+	s.mu.RUnlock()
+	if !exists {
+		return nil, fmt.Errorf("peer was not found")
+	}
+
+	s.hashRing.Remove(req.GetNodeAddress())
+
+	return &cachepb.LeaveResponse{
+		Success: true,
+	}, nil
 }

@@ -405,6 +405,182 @@ func (x *JoinResponse) GetPeerAddresses() []string {
 	return nil
 }
 
+type LeaveRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeAddress   string                 `protobuf:"bytes,1,opt,name=node_address,json=nodeAddress,proto3" json:"node_address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LeaveRequest) Reset() {
+	*x = LeaveRequest{}
+	mi := &file_cachepb_types_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LeaveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LeaveRequest) ProtoMessage() {}
+
+func (x *LeaveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cachepb_types_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LeaveRequest.ProtoReflect.Descriptor instead.
+func (*LeaveRequest) Descriptor() ([]byte, []int) {
+	return file_cachepb_types_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *LeaveRequest) GetNodeAddress() string {
+	if x != nil {
+		return x.NodeAddress
+	}
+	return ""
+}
+
+type LeaveResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LeaveResponse) Reset() {
+	*x = LeaveResponse{}
+	mi := &file_cachepb_types_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LeaveResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LeaveResponse) ProtoMessage() {}
+
+func (x *LeaveResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cachepb_types_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LeaveResponse.ProtoReflect.Descriptor instead.
+func (*LeaveResponse) Descriptor() ([]byte, []int) {
+	return file_cachepb_types_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *LeaveResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+type AliveRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeAddress   string                 `protobuf:"bytes,1,opt,name=node_address,json=nodeAddress,proto3" json:"node_address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AliveRequest) Reset() {
+	*x = AliveRequest{}
+	mi := &file_cachepb_types_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AliveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AliveRequest) ProtoMessage() {}
+
+func (x *AliveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cachepb_types_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AliveRequest.ProtoReflect.Descriptor instead.
+func (*AliveRequest) Descriptor() ([]byte, []int) {
+	return file_cachepb_types_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AliveRequest) GetNodeAddress() string {
+	if x != nil {
+		return x.NodeAddress
+	}
+	return ""
+}
+
+type AliveResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AliveResponse) Reset() {
+	*x = AliveResponse{}
+	mi := &file_cachepb_types_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AliveResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AliveResponse) ProtoMessage() {}
+
+func (x *AliveResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cachepb_types_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AliveResponse.ProtoReflect.Descriptor instead.
+func (*AliveResponse) Descriptor() ([]byte, []int) {
+	return file_cachepb_types_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *AliveResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 var File_cachepb_types_proto protoreflect.FileDescriptor
 
 const file_cachepb_types_proto_rawDesc = "" +
@@ -431,12 +607,22 @@ const file_cachepb_types_proto_rawDesc = "" +
 	"\fnode_address\x18\x01 \x01(\tR\vnodeAddress\x12%\n" +
 	"\x0etarget_address\x18\x02 \x01(\tR\rtargetAddress\"5\n" +
 	"\fJoinResponse\x12%\n" +
-	"\x0epeer_addresses\x18\x01 \x03(\tR\rpeerAddresses2\xd2\x01\n" +
+	"\x0epeer_addresses\x18\x01 \x03(\tR\rpeerAddresses\"1\n" +
+	"\fLeaveRequest\x12!\n" +
+	"\fnode_address\x18\x01 \x01(\tR\vnodeAddress\")\n" +
+	"\rLeaveResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"1\n" +
+	"\fAliveRequest\x12!\n" +
+	"\fnode_address\x18\x01 \x01(\tR\vnodeAddress\")\n" +
+	"\rAliveResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess2\xbc\x02\n" +
 	"\fCacheService\x12,\n" +
 	"\x03Get\x12\x11.types.GetRequest\x1a\x12.types.GetResponse\x12,\n" +
 	"\x03Set\x12\x11.types.SetRequest\x1a\x12.types.SetResponse\x125\n" +
 	"\x06Delete\x12\x14.types.DeleteRequest\x1a\x15.types.DeleteResponse\x12/\n" +
-	"\x04Join\x12\x12.types.JoinRequest\x1a\x13.types.JoinResponseB7Z5github.com/GiorgosMarga/distributed_cache/api/cachepbb\x06proto3"
+	"\x04Join\x12\x12.types.JoinRequest\x1a\x13.types.JoinResponse\x122\n" +
+	"\x05Leave\x12\x13.types.LeaveRequest\x1a\x14.types.LeaveResponse\x124\n" +
+	"\aIsAlive\x12\x13.types.AliveRequest\x1a\x14.types.AliveResponseB7Z5github.com/GiorgosMarga/distributed_cache/api/cachepbb\x06proto3"
 
 var (
 	file_cachepb_types_proto_rawDescOnce sync.Once
@@ -450,7 +636,7 @@ func file_cachepb_types_proto_rawDescGZIP() []byte {
 	return file_cachepb_types_proto_rawDescData
 }
 
-var file_cachepb_types_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_cachepb_types_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_cachepb_types_proto_goTypes = []any{
 	(*GetRequest)(nil),     // 0: types.GetRequest
 	(*GetResponse)(nil),    // 1: types.GetResponse
@@ -460,21 +646,29 @@ var file_cachepb_types_proto_goTypes = []any{
 	(*DeleteResponse)(nil), // 5: types.DeleteResponse
 	(*JoinRequest)(nil),    // 6: types.JoinRequest
 	(*JoinResponse)(nil),   // 7: types.JoinResponse
+	(*LeaveRequest)(nil),   // 8: types.LeaveRequest
+	(*LeaveResponse)(nil),  // 9: types.LeaveResponse
+	(*AliveRequest)(nil),   // 10: types.AliveRequest
+	(*AliveResponse)(nil),  // 11: types.AliveResponse
 }
 var file_cachepb_types_proto_depIdxs = []int32{
-	0, // 0: types.CacheService.Get:input_type -> types.GetRequest
-	2, // 1: types.CacheService.Set:input_type -> types.SetRequest
-	4, // 2: types.CacheService.Delete:input_type -> types.DeleteRequest
-	6, // 3: types.CacheService.Join:input_type -> types.JoinRequest
-	1, // 4: types.CacheService.Get:output_type -> types.GetResponse
-	3, // 5: types.CacheService.Set:output_type -> types.SetResponse
-	5, // 6: types.CacheService.Delete:output_type -> types.DeleteResponse
-	7, // 7: types.CacheService.Join:output_type -> types.JoinResponse
-	4, // [4:8] is the sub-list for method output_type
-	0, // [0:4] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0,  // 0: types.CacheService.Get:input_type -> types.GetRequest
+	2,  // 1: types.CacheService.Set:input_type -> types.SetRequest
+	4,  // 2: types.CacheService.Delete:input_type -> types.DeleteRequest
+	6,  // 3: types.CacheService.Join:input_type -> types.JoinRequest
+	8,  // 4: types.CacheService.Leave:input_type -> types.LeaveRequest
+	10, // 5: types.CacheService.IsAlive:input_type -> types.AliveRequest
+	1,  // 6: types.CacheService.Get:output_type -> types.GetResponse
+	3,  // 7: types.CacheService.Set:output_type -> types.SetResponse
+	5,  // 8: types.CacheService.Delete:output_type -> types.DeleteResponse
+	7,  // 9: types.CacheService.Join:output_type -> types.JoinResponse
+	9,  // 10: types.CacheService.Leave:output_type -> types.LeaveResponse
+	11, // 11: types.CacheService.IsAlive:output_type -> types.AliveResponse
+	6,  // [6:12] is the sub-list for method output_type
+	0,  // [0:6] is the sub-list for method input_type
+	0,  // [0:0] is the sub-list for extension type_name
+	0,  // [0:0] is the sub-list for extension extendee
+	0,  // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_cachepb_types_proto_init() }
@@ -488,7 +682,7 @@ func file_cachepb_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cachepb_types_proto_rawDesc), len(file_cachepb_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

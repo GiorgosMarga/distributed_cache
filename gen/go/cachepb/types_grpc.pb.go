@@ -19,10 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	CacheService_Get_FullMethodName    = "/types.CacheService/Get"
-	CacheService_Set_FullMethodName    = "/types.CacheService/Set"
-	CacheService_Delete_FullMethodName = "/types.CacheService/Delete"
-	CacheService_Join_FullMethodName   = "/types.CacheService/Join"
+	CacheService_Get_FullMethodName     = "/types.CacheService/Get"
+	CacheService_Set_FullMethodName     = "/types.CacheService/Set"
+	CacheService_Delete_FullMethodName  = "/types.CacheService/Delete"
+	CacheService_Join_FullMethodName    = "/types.CacheService/Join"
+	CacheService_Leave_FullMethodName   = "/types.CacheService/Leave"
+	CacheService_IsAlive_FullMethodName = "/types.CacheService/IsAlive"
 )
 
 // CacheServiceClient is the client API for CacheService service.
@@ -33,6 +35,8 @@ type CacheServiceClient interface {
 	Set(ctx context.Context, in *SetRequest, opts ...grpc.CallOption) (*SetResponse, error)
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
 	Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*JoinResponse, error)
+	Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error)
+	IsAlive(ctx context.Context, in *AliveRequest, opts ...grpc.CallOption) (*AliveResponse, error)
 }
 
 type cacheServiceClient struct {
@@ -83,6 +87,26 @@ func (c *cacheServiceClient) Join(ctx context.Context, in *JoinRequest, opts ...
 	return out, nil
 }
 
+func (c *cacheServiceClient) Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LeaveResponse)
+	err := c.cc.Invoke(ctx, CacheService_Leave_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cacheServiceClient) IsAlive(ctx context.Context, in *AliveRequest, opts ...grpc.CallOption) (*AliveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AliveResponse)
+	err := c.cc.Invoke(ctx, CacheService_IsAlive_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CacheServiceServer is the server API for CacheService service.
 // All implementations must embed UnimplementedCacheServiceServer
 // for forward compatibility.
@@ -91,6 +115,8 @@ type CacheServiceServer interface {
 	Set(context.Context, *SetRequest) (*SetResponse, error)
 	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
 	Join(context.Context, *JoinRequest) (*JoinResponse, error)
+	Leave(context.Context, *LeaveRequest) (*LeaveResponse, error)
+	IsAlive(context.Context, *AliveRequest) (*AliveResponse, error)
 	mustEmbedUnimplementedCacheServiceServer()
 }
 
@@ -112,6 +138,12 @@ func (UnimplementedCacheServiceServer) Delete(context.Context, *DeleteRequest) (
 }
 func (UnimplementedCacheServiceServer) Join(context.Context, *JoinRequest) (*JoinResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Join not implemented")
+}
+func (UnimplementedCacheServiceServer) Leave(context.Context, *LeaveRequest) (*LeaveResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Leave not implemented")
+}
+func (UnimplementedCacheServiceServer) IsAlive(context.Context, *AliveRequest) (*AliveResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method IsAlive not implemented")
 }
 func (UnimplementedCacheServiceServer) mustEmbedUnimplementedCacheServiceServer() {}
 func (UnimplementedCacheServiceServer) testEmbeddedByValue()                      {}
@@ -206,6 +238,42 @@ func _CacheService_Join_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CacheService_Leave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LeaveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CacheServiceServer).Leave(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CacheService_Leave_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CacheServiceServer).Leave(ctx, req.(*LeaveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CacheService_IsAlive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AliveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CacheServiceServer).IsAlive(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CacheService_IsAlive_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CacheServiceServer).IsAlive(ctx, req.(*AliveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CacheService_ServiceDesc is the grpc.ServiceDesc for CacheService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -228,6 +296,14 @@ var CacheService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Join",
 			Handler:    _CacheService_Join_Handler,
+		},
+		{
+			MethodName: "Leave",
+			Handler:    _CacheService_Leave_Handler,
+		},
+		{
+			MethodName: "IsAlive",
+			Handler:    _CacheService_IsAlive_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
