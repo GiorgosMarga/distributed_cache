@@ -20,12 +20,9 @@ type Server struct {
 	cache      cache.Cache
 	addr       string
 	grpcServer *grpc.Server
-	// The Peer Map
-	// Key:   Node Address (e.g., "192.168.1.10:50051")
-	// Value: The gRPC client used to talk to that node
-	peers    map[string]*Peer
-	mu       *sync.RWMutex
-	hashRing *cluster.HashRing
+	peers      map[string]*Peer
+	mu         *sync.RWMutex
+	hashRing   *cluster.HashRing
 }
 
 func NewServer(addr string) *Server {
@@ -58,7 +55,36 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) Stop() {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	fmt.Printf("%+v\n", s.peers)
+	for _, peer := range s.peers {
+		if _, err := peer.client.Leave(ctx, &cachepb.LeaveRequest{NodeAddress: s.addr}); err != nil {
+			fmt.Printf("[%s]: Error sending leave message %s %s\n", s.addr, peer.addr, err)
+		}
+	}
+
+	cache := s.cache.GetData()
+
+	s.hashRing.Remove(s.addr)
+
+	for k, v := range cache {
+		s.Set(ctx, &cachepb.SetRequest{
+			Key:   []byte(k),
+			Value: v.Value,
+			Ttl:   v.Ttl,
+		})
+	}
+
+	for _, peer := range s.peers {
+		if err := peer.Close(); err != nil {
+			fmt.Printf("[%s]: Error closing %s\n", s.addr, peer.addr)
+		}
+	}
 	s.grpcServer.GracefulStop()
+	fmt.Println("Stopped server")
 }
 
 func (s *Server) Set(ctx context.Context, req *cachepb.SetRequest) (*cachepb.SetResponse, error) {
@@ -76,7 +102,7 @@ func (s *Server) Set(ctx context.Context, req *cachepb.SetRequest) (*cachepb.Set
 				Success: false,
 			}, nil
 		}
-		return peer.conn.Set(ctx, req)
+		return peer.client.Set(ctx, req)
 	}
 	fmt.Printf("[%s]: Setting %s -> %s\n", s.addr, key, req.GetValue())
 	if err := s.cache.Set(req.GetKey(), req.GetValue(), req.GetTtl()); err != nil {
@@ -90,7 +116,6 @@ func (s *Server) Set(ctx context.Context, req *cachepb.SetRequest) (*cachepb.Set
 	}, nil
 }
 func (s *Server) ConnectWith(peerAddr string) error {
-	fmt.Printf("[%s]: Connecting with %s\n", s.addr, peerAddr)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -109,18 +134,16 @@ func (s *Server) ConnectWith(peerAddr string) error {
 			continue
 		}
 
-		client, resp, err := s.connectWith(ctx, peerAddr)
+		peer, resp, err := s.connectWith(ctx, peerAddr)
 		if err != nil {
 			fmt.Printf("[%s]: Error connecting with %s, %s", s.addr, newPeers[i], err)
 			continue
 		}
 
 		s.mu.Lock()
-		s.peers[peerAddr] = &Peer{
-			conn: client,
-			addr: peerAddr,
-		}
+		s.peers[peerAddr] = peer
 		s.mu.Unlock()
+		fmt.Printf("[%s]: Connected with %s\n", s.addr, peerAddr)
 		newPeerAddresses := resp.GetPeerAddresses()
 		newPeers = append(newPeers, newPeerAddresses...)
 		totalPeers += len(newPeerAddresses)
@@ -128,9 +151,9 @@ func (s *Server) ConnectWith(peerAddr string) error {
 
 	return nil
 }
-func (s *Server) connectWith(ctx context.Context, peer string) (cachepb.CacheServiceClient, *cachepb.JoinResponse, error) {
-	fmt.Printf("[%s]: Trying to connect with %s\n", s.addr, peer)
+func (s *Server) connectWith(ctx context.Context, peer string) (*Peer, *cachepb.JoinResponse, error) {
 	conn, err := grpc.NewClient(peer, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
 	if err != nil {
 		fmt.Printf("[%s]: Error connecting with %s\n", s.addr, peer)
 		return nil, nil, err
@@ -141,14 +164,11 @@ func (s *Server) connectWith(ctx context.Context, peer string) (cachepb.CacheSer
 		fmt.Printf("[%s]: Error connecting with %s\n", s.addr, peer)
 		return nil, nil, err
 	}
-	fmt.Printf("[%s]: connected with %s\n", s.addr, peer)
 
-	return client, resp, nil
+	return &Peer{client: client, conn: conn, addr: peer}, resp, nil
 }
 func (s *Server) Join(ctx context.Context, req *cachepb.JoinRequest) (*cachepb.JoinResponse, error) {
 	peerAddr := req.GetNodeAddress()
-	fmt.Printf("[%s]: Received join from %s\n", s.addr, peerAddr)
-
 	s.mu.Lock()
 	_, exists := s.peers[peerAddr]
 	if !exists {
@@ -180,7 +200,7 @@ func (s *Server) Get(ctx context.Context, req *cachepb.GetRequest) (*cachepb.Get
 		if !ok {
 			return nil, fmt.Errorf("peer is dead")
 		}
-		return peer.conn.Get(ctx, req)
+		return peer.client.Get(ctx, req)
 	}
 
 	fmt.Printf("[%s]: Getting %s\n", s.addr, key)
@@ -233,14 +253,19 @@ func (s *Server) IsAlive(ctx context.Context, req *cachepb.AliveRequest) (*cache
 func (s *Server) Leave(ctx context.Context, req *cachepb.LeaveRequest) (*cachepb.LeaveResponse, error) {
 	from := req.GetNodeAddress()
 	s.mu.RLock()
-	_, exists := s.peers[from]
+	peer, exists := s.peers[from]
 	s.mu.RUnlock()
 	if !exists {
 		return nil, fmt.Errorf("peer was not found")
 	}
-
+	fmt.Printf("[%s]: Removing %s...\n", s.addr, from)
 	s.hashRing.Remove(req.GetNodeAddress())
-
+	if err := peer.conn.Close(); err != nil {
+		return nil, err
+	}
+	s.mu.Lock()
+	delete(s.peers, from)
+	s.mu.Unlock()
 	return &cachepb.LeaveResponse{
 		Success: true,
 	}, nil

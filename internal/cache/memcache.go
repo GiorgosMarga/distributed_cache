@@ -13,8 +13,7 @@ const (
 type MemCache struct {
 	totalCapacity uint32
 	maxCapacity   uint32
-	cache         map[string][]byte
-	ttls          map[string]time.Time
+	cache         map[string]*Data
 	mtx           *sync.RWMutex
 	quitChan      chan struct{}
 }
@@ -24,8 +23,7 @@ func NewMemCache(maxCapacity uint32) *MemCache {
 		totalCapacity: 0,
 		maxCapacity:   maxCapacity,
 		mtx:           &sync.RWMutex{},
-		cache:         make(map[string][]byte, maxCapacity),
-		ttls:          make(map[string]time.Time),
+		cache:         make(map[string]*Data, maxCapacity),
 		quitChan:      make(chan struct{}),
 	}
 
@@ -41,8 +39,11 @@ func (mc *MemCache) Set(key, value []byte, ttl uint32) error {
 	mc.mtx.Lock()
 	defer mc.mtx.Unlock()
 
-	mc.cache[string(key)] = value
-	mc.ttls[string(key)] = time.Now().Add(time.Duration(ttl) * time.Second)
+	mc.cache[string(key)] = &Data{
+		Value:      value,
+		Ttl:        ttl,
+		ValidUntil: time.Now().Add(time.Duration(ttl) * time.Second),
+	}
 
 	return nil
 }
@@ -56,7 +57,7 @@ func (mc *MemCache) Get(key []byte) ([]byte, error) {
 		return nil, fmt.Errorf("[MemCache]: [%s] %w", string(key), ErrNotFound)
 	}
 
-	return v, nil
+	return v.Value, nil
 }
 
 func (mc *MemCache) Delete(key []byte) error {
@@ -69,7 +70,6 @@ func (mc *MemCache) delete(key []byte) error {
 		return fmt.Errorf("[MemCache]: [%s] %w", string(key), ErrNotFound)
 	}
 	delete(mc.cache, string(key))
-	delete(mc.ttls, string(key))
 	return nil
 }
 
@@ -81,8 +81,8 @@ func (mc *MemCache) deleteLoop(quitCh <-chan struct{}) {
 		case <-ticker.C:
 			// delete
 			mc.mtx.Lock()
-			for key, ttl := range mc.ttls {
-				if ttl.Before(time.Now()) {
+			for key, d := range mc.cache {
+				if d.ValidUntil.Before(time.Now()) {
 					if err := mc.delete([]byte(key)); err != nil {
 						fmt.Println("[MemCache]:", err)
 					}
@@ -96,4 +96,8 @@ func (mc *MemCache) deleteLoop(quitCh <-chan struct{}) {
 		}
 	}
 
+}
+
+func (mc *MemCache) GetData() map[string]*Data {
+	return mc.cache
 }
