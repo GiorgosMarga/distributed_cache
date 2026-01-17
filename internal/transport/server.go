@@ -15,6 +15,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+type ServerOpts struct {
+}
+
 type Server struct {
 	cachepb.UnimplementedCacheServiceServer
 	cache      cache.Cache
@@ -23,15 +26,21 @@ type Server struct {
 	peers      map[string]*Peer
 	mu         *sync.RWMutex
 	hashRing   *cluster.HashRing
+	ctx        context.Context
+	cancelFunc context.CancelFunc
+	ServerOpts
 }
 
 func NewServer(addr string) *Server {
+	ctx, cancel := context.WithCancel(context.Background())
 	s := &Server{
-		cache:    cache.NewMemCache(1024),
-		addr:     addr,
-		mu:       &sync.RWMutex{},
-		peers:    make(map[string]*Peer),
-		hashRing: cluster.NewHashRing(1024),
+		cache:      cache.NewMemCache(1024),
+		addr:       addr,
+		mu:         &sync.RWMutex{},
+		peers:      make(map[string]*Peer),
+		hashRing:   cluster.NewHashRing(1024),
+		ctx:        ctx,
+		cancelFunc: cancel,
 	}
 
 	s.hashRing.AddServer(addr)
@@ -49,17 +58,20 @@ func (s *Server) Start() error {
 	cachepb.RegisterCacheServiceServer(s.grpcServer, s)
 
 	fmt.Printf("[Server]: Is listening on address %s\n", s.addr)
-
+	go s.heartbeatLoop()
 	return s.grpcServer.Serve(ln)
-
 }
 
+// Stop stops the server, notifies the other peers and re-sets the keys on next server
 func (s *Server) Stop() {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
+	// stop the hearbeatloop
+	s.cancelFunc()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	fmt.Printf("%+v\n", s.peers)
 	for _, peer := range s.peers {
 		if _, err := peer.client.Leave(ctx, &cachepb.LeaveRequest{NodeAddress: s.addr}); err != nil {
 			fmt.Printf("[%s]: Error sending leave message %s %s\n", s.addr, peer.addr, err)
@@ -83,6 +95,8 @@ func (s *Server) Stop() {
 			fmt.Printf("[%s]: Error closing %s\n", s.addr, peer.addr)
 		}
 	}
+
+	s.cache.Stop()
 	s.grpcServer.GracefulStop()
 	fmt.Println("Stopped server")
 }
@@ -114,6 +128,33 @@ func (s *Server) Set(ctx context.Context, req *cachepb.SetRequest) (*cachepb.Set
 	return &cachepb.SetResponse{
 		Success: true,
 	}, nil
+}
+
+func (s *Server) heartbeatLoop() {
+	ticker := time.NewTicker(time.Duration(1) * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			s.mu.Lock()
+			peers := make([]*Peer, 0, len(s.peers))
+			for _, peer := range s.peers {
+				peers = append(peers, peer)
+			}
+			s.mu.Unlock()
+			for _, peer := range peers {
+				if _, err := peer.client.IsAlive(s.ctx, &cachepb.AliveRequest{NodeAddress: s.addr}); err != nil {
+					s.hashRing.Remove(peer.addr)
+					s.mu.Lock()
+					delete(s.peers, peer.addr)
+					s.mu.Unlock()
+				}
+			}
+		case <-s.ctx.Done():
+			fmt.Printf("[%s]: stopping heartbeat loop\n", s.addr)
+			return
+		}
+	}
 }
 func (s *Server) ConnectWith(peerAddr string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)

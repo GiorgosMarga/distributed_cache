@@ -27,7 +27,7 @@ func NewMemCache(maxCapacity uint32) *MemCache {
 		quitChan:      make(chan struct{}),
 	}
 
-	go mc.deleteLoop(mc.quitChan)
+	go mc.deleteLoop()
 	return mc
 }
 
@@ -73,7 +73,7 @@ func (mc *MemCache) delete(key []byte) error {
 	return nil
 }
 
-func (mc *MemCache) deleteLoop(quitCh <-chan struct{}) {
+func (mc *MemCache) deleteLoop() {
 	ticker := time.NewTicker(time.Duration(DeleteInterval) * time.Millisecond)
 
 	for {
@@ -90,7 +90,7 @@ func (mc *MemCache) deleteLoop(quitCh <-chan struct{}) {
 				}
 			}
 			mc.mtx.Unlock()
-		case <-quitCh:
+		case <-mc.quitChan:
 			fmt.Println("[Memcache]: stopping delete loop...")
 			return
 		}

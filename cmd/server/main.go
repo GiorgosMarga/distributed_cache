@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -34,34 +33,27 @@ func startServer(address string, connectWith string) error {
 		}
 	}()
 	go gracefullShutdown(server, quitChan)
-
-	fmt.Println("here")
 	return server.Start()
-
 }
 
 func main() {
 	var (
-		servers     int
+		// servers     int
 		address     int
 		connectWith string
 	)
-	flag.IntVar(&servers, "servers", 10, "number of servers")
+	// flag.IntVar(&servers, "servers", 10, "number of servers")
 	flag.StringVar(&connectWith, "connectWith", ":3000", "bootstrap node")
 	flag.IntVar(&address, "address", 3000, "the first address of the server. If 10 servers are set then the address go from address to address + 10")
 	flag.Parse()
 
-	// quitChan := make(chan os.Signal)
+	// wg := &sync.WaitGroup{}
 
-	// signal.Notify(quitChan, syscall.SIGINT, syscall.SIGTERM)
-
-	wg := &sync.WaitGroup{}
-
-	for i := range servers {
-		wg.Go(func() {
-			startServer(fmt.Sprintf(":%d", address+i), connectWith)
-		})
-	}
-	wg.Wait()
+	// for i := range servers {
+	// wg.Go(func() {
+	startServer(fmt.Sprintf(":%d", address), connectWith)
+	// })
+	// }
+	// wg.Wait()
 
 }

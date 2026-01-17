@@ -19,4 +19,5 @@ type Cache interface {
 	Get([]byte) ([]byte, error)
 	Delete([]byte) error
 	GetData() map[string]*Data
+	Stop()
 }
