@@ -35,15 +35,15 @@ func (mc *MemCache) Stop() {
 	close(mc.quitChan)
 }
 
-func (mc *MemCache) Set(key, value []byte, ttl uint32) error {
+func (mc *MemCache) Set(item *Data) error {
 	mc.mtx.Lock()
 	defer mc.mtx.Unlock()
 
-	mc.cache[string(key)] = &Data{
-		Value:      value,
-		Ttl:        ttl,
-		ValidUntil: time.Now().Add(time.Duration(ttl) * time.Second),
+	if item.InsertedAt == 0 {
+		item.InsertedAt = time.Now().Unix()
 	}
+
+	mc.cache[string(item.Key)] = item
 
 	return nil
 }
@@ -82,7 +82,8 @@ func (mc *MemCache) deleteLoop() {
 			// delete
 			mc.mtx.Lock()
 			for key, d := range mc.cache {
-				if d.ValidUntil.Before(time.Now()) {
+
+				if time.Now().Unix() > (d.InsertedAt + int64(d.Ttl)) {
 					if err := mc.delete([]byte(key)); err != nil {
 						fmt.Println("[MemCache]:", err)
 					}
@@ -98,6 +99,19 @@ func (mc *MemCache) deleteLoop() {
 
 }
 
-func (mc *MemCache) GetData() map[string]*Data {
-	return mc.cache
+func (mc *MemCache) GetData() []*Data {
+	idx := 0
+	mc.mtx.RLock()
+	defer mc.mtx.RUnlock()
+	items := make([]*Data, len(mc.cache))
+	for key, item := range mc.cache {
+		items[idx] = &Data{
+			Key:        []byte(key),
+			Value:      item.Value,
+			Ttl:        item.Ttl,
+			InsertedAt: item.InsertedAt,
+		}
+		idx++
+	}
+	return items
 }

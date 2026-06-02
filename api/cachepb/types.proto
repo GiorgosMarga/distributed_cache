@@ -6,27 +6,46 @@ package types;
 
 service CacheService {
     rpc Get(GetRequest) returns (GetResponse);
+    rpc TransferKeys(TransferRequest) returns (TransferResponse);
+    rpc GetAll(GetAllRequest) returns (GetAllResponse);
     rpc Set(SetRequest) returns (SetResponse);
     rpc Delete(DeleteRequest) returns (DeleteResponse);
     rpc Join(JoinRequest) returns (JoinResponse);
     rpc Leave(LeaveRequest) returns (LeaveResponse);
     rpc IsAlive(AliveRequest) returns (AliveResponse);
 }
+message TransferRequest {
+  repeated Item items = 1;
+}
+message TransferResponse {
+  bool success = 1;
+  int32 nkeys = 2;
+}
 
 message GetRequest {
   bytes key = 1;
 }
-
 message GetResponse {
   bytes value = 1;
   bool hit  = 2;
 }
 
-
-message SetRequest {
+message Item {
   bytes key = 1;
   bytes value = 2;
-  uint32 ttl  = 3;
+  uint32 ttl = 3;
+  int64 insertedAt = 4;
+}
+
+message GetAllRequest {
+}
+message GetAllResponse {
+  repeated Item items = 1;
+}
+
+
+message SetRequest {
+  Item item = 1;
 }
 
 

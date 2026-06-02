@@ -2,58 +2,42 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
-	"time"
 
 	"github.com/GiorgosMarga/distributed_cache/internal/transport"
 )
 
 func gracefullShutdown(s *transport.Server, quitChan chan os.Signal) {
 	<-quitChan
-	fmt.Println("Shutting down")
 	s.Stop()
-}
-
-func startServer(address string, connectWith string) error {
-	quitChan := make(chan os.Signal, 1)
-
-	signal.Notify(quitChan, syscall.SIGTERM, syscall.SIGINT)
-
-	server := transport.NewServer(address)
-	go func() {
-		if connectWith == address {
-			return
-		}
-		time.Sleep(1 * time.Second)
-		if err := server.ConnectWith(connectWith); err != nil {
-			fmt.Println(err)
-		}
-	}()
-	go gracefullShutdown(server, quitChan)
-	return server.Start()
 }
 
 func main() {
 	var (
 		// servers     int
-		address     int
-		connectWith string
+		address        string
+		bootstrapNodes []string
 	)
+	quitChan := make(chan os.Signal, 1)
+	signal.Notify(quitChan, syscall.SIGTERM, syscall.SIGINT)
 	// flag.IntVar(&servers, "servers", 10, "number of servers")
-	flag.StringVar(&connectWith, "connectWith", ":3000", "bootstrap node")
-	flag.IntVar(&address, "address", 3000, "the first address of the server. If 10 servers are set then the address go from address to address + 10")
+	flag.Func("connectWith", "Bootstrap nodes to connect on Start().", func(s string) error {
+		bootstrapNodes = strings.Split(s, ",")
+		return nil
+	})
+	flag.StringVar(&address, "address", ":3000", "the first address of the server. If 10 servers are set then the address go from address to address + 10")
 	flag.Parse()
 
-	// wg := &sync.WaitGroup{}
+	if !strings.Contains(address, ":") {
+		address = ":" + address
+	}
+	server := transport.NewServer(address)
 
-	// for i := range servers {
-	// wg.Go(func() {
-	startServer(fmt.Sprintf(":%d", address), connectWith)
-	// })
-	// }
-	// wg.Wait()
+	go gracefullShutdown(server, quitChan)
 
+	log.Fatal(server.Start(bootstrapNodes...))
 }

@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Distributed Cache UI</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f4f6;
+      --panel: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #0f766e;
+      --accent-strong: #115e59;
+      --border: #d1d5db;
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.15), transparent 28%),
+        linear-gradient(180deg, #fafafa 0%, var(--bg) 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      width: min(1000px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 48px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(209, 213, 219, 0.9);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 1;
+      letter-spacing: -0.05em;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.10);
+      color: var(--accent-strong);
+      font-weight: 700;
+      font-size: 0.92rem;
+      margin-bottom: 14px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 1fr;
+      gap: 16px;
+      align-items: start;
+      margin-top: 16px;
+    }
+
+    .stacked {
+      display: grid;
+      gap: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    input,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      padding: 12px 14px;
+      color: var(--text);
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    button:hover {
+      background: var(--accent-strong);
+    }
+
+    button.secondary:hover {
+      background: #d1d5db;
+    }
+
+    .metric {
+      display: grid;
+      gap: 6px;
+      padding: 18px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric .value {
+      font-size: 1.05rem;
+      font-weight: 700;
+      word-break: break-all;
+    }
+
+    pre {
+      margin: 0;
+      padding: 16px;
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 16px;
+      overflow: auto;
+      min-height: 140px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .form-card {
+      padding: 22px;
+    }
+
+    .form-card h2 {
+      margin: 0 0 16px;
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .snapshot-tools {
+      display: grid;
+      gap: 12px;
+    }
+
+    .server-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .server {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(209, 213, 219, 0.9);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
+    }
+
+    .server h3 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+
+    .server small {
+      display: block;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .items {
+      display: grid;
+      gap: 10px;
+    }
+
+    .item {
+      border-radius: 14px;
+      padding: 12px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .item .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .pill.ok {
+      background: rgba(34, 197, 94, 0.14);
+      color: #16a34a;
+    }
+
+    .pill.bad {
+      background: rgba(239, 68, 68, 0.14);
+      color: #ef4444;
+    }
+
+    @media (max-width: 860px) {
+
+      .hero,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="card panel">
+        <div class="badge">Go + gRPC cache UI</div>
+        <h1>Distributed Cache</h1>
+        <p>This browser UI talks to one cache node over gRPC. It can store a key, fetch it back, and delete it. The
+          backend address is shown on the right.</p>
+      </div>
+      <div class="card metric">
+        <div class="label">Backend</div>
+        <div class="value">{{.Backend}}</div>
+        <div class="label">Protocol</div>
+        <div class="value">gRPC over insecure localhost transport</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card form-card">
+        <h2>Get value</h2>
+        <div class="stack">
+          <div>
+            <label for="getKey">Key</label>
+            <input id="getKey" placeholder="my-key" />
+          </div>
+          <div class="actions">
+            <button id="getBtn" type="button">Get</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card form-card">
+        <h2>Set value</h2>
+        <div class="stack">
+          <div>
+            <label for="setKey">Key</label>
+            <input id="setKey" placeholder="my-key" />
+          </div>
+          <div>
+            <label for="setValue">Value</label>
+            <textarea id="setValue" placeholder="hello world"></textarea>
+          </div>
+          <div>
+            <label for="setTTL">TTL seconds</label>
+            <input id="setTTL" type="number" min="1" value="30" />
+          </div>
+          <div class="actions">
+            <button id="setBtn" type="button">Set</button>
+            <button id="deleteBtn" type="button" class="secondary">Delete</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <div class="card form-card">
+        <h2>Response</h2>
+        <pre id="output">Ready.</pre>
+      </div>
+
+      <div class="stacked">
+        <section class="card form-card">
+          <h2>Cluster snapshot</h2>
+          <div class="actions">
+            <button id="addServerBtn" type="button">Add server</button>
+            <button id="removeServerBtn" type="button" class="secondary">Remove server</button>
+            <button id="resetSnapshotBtn" type="button" class="secondary">Reset cluster</button>
+          </div>
+          <div id="snapshotSummary" style="margin-top: 16px; color: var(--muted);">Snapshot appears after the first successful put.</div>
+          <div id="snapshotRoot" class="server-grid" style="margin-top: 16px;"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const output = document.getElementById('output');
+    const snapshotSummary = document.getElementById('snapshotSummary');
+    const snapshotRoot = document.getElementById('snapshotRoot');
+    const write = (value) => {
+      output.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+    };
+    const escapeHtml = (value) => {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+    const renderSnapshot = (snapshot) => {
+      const servers = [...(snapshot?.servers || [])].sort((a, b) => {
+        return String(a.address || '').localeCompare(String(b.address || ''));
+      });
+      if (!servers.length) {
+        snapshotSummary.textContent = 'No servers found in snapshot.';
+        snapshotRoot.innerHTML = '';
+        return;
+      }
+
+      const totalKeys = servers.reduce((count, server) => count + (server.items?.length || 0), 0);
+      snapshotSummary.textContent = servers.length + ' server(s), ' + totalKeys + ' key(s). Snapshot updates after a successful put.';
+      snapshotRoot.innerHTML = servers.map((server) => {
+        if (server.error) {
+          return '<article class="server">' +
+            '<h3>' + escapeHtml(server.address) + '</h3>' +
+            '<small>' + escapeHtml(server.error) + '</small>' +
+            '<div class="items"><div style="color: var(--muted);">No keys</div></div>' +
+            '</article>';
+        }
+
+        const items = [...(server.items || [])].sort((a, b) => {
+          return String(a.key || '').localeCompare(String(b.key || ''));
+        }).map((item) => {
+          return '<div class="item">' +
+            '<div class="row">' +
+            '<strong>' + escapeHtml(item.key) + '</strong>' +
+            '<span class="pill ok">served</span>' +
+            '</div>' +
+            '<div style="margin-top: 8px; color: #cbd5e1;">value: ' + escapeHtml(item.value || '') + '</div>' +
+            '<div style="margin-top: 6px; color: #94a3b8;">ttl: ' + Number(item.ttl ?? 0) + 's</div>' +
+            '</div>';
+        }).join('');
+
+        return '<article class="server">' +
+          '<h3>' + escapeHtml(server.address) + '</h3>' +
+          '<small>' + (server.items || []).length + ' item(s)</small>' +
+          '<div class="items">' + (items || '<div style="color: var(--muted);">No keys</div>') + '</div>' +
+          '</article>';
+      }).join('');
+    };
+    const postJSON = async (path, body) => {
+      const res = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'request failed');
+      }
+      return data;
+    };
+    const refreshSnapshot = async () => {
+      try {
+        const res = await fetch('/api/cluster/snapshot?ts=' + Date.now(), {
+          cache: 'no-store',
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'request failed');
+        }
+        renderSnapshot(data);
+      } catch (err) {
+        snapshotSummary.textContent = 'Snapshot refresh failed.';
+        snapshotRoot.innerHTML = '<article class="server"><h3>Snapshot unavailable</h3><small>' + escapeHtml(err.message) + '</small></article>';
+      }
+    };
+    refreshSnapshot();
+    setInterval(refreshSnapshot, 1000);
+    document.getElementById('addServerBtn').addEventListener('click', async () => {
+      try {
+        const resp = await postJSON('/api/cluster/add', {});
+        write(resp);
+      } catch (err) {
+        write({ error: err.message });
+      }
+    });
+    document.getElementById('removeServerBtn').addEventListener('click', async () => {
+      try {
+        const resp = await postJSON('/api/cluster/remove', {});
+        write(resp);
+      } catch (err) {
+        write({ error: err.message });
+      }
+    });
+    document.getElementById('getBtn').addEventListener('click', async () => {
+      try {
+        write('Loading...');
+        const key = document.getElementById('getKey').value.trim();
+        write(await postJSON('/api/get', { key }));
+      } catch (err) {
+        write({ error: err.message });
+      }
+    });
+    document.getElementById('setBtn').addEventListener('click', async () => {
+      try {
+        write('Saving...');
+        const key = document.getElementById('setKey').value.trim();
+        const value = document.getElementById('setValue').value;
+        const ttl = Number(document.getElementById('setTTL').value || 30);
+        const resp = await postJSON('/api/set', { key, value, ttl });
+        write(resp);
+        if (resp.success) {
+          await refreshSnapshot();
+        }
+      } catch (err) {
+        write({ error: err.message });
+      }
+    });
+    document.getElementById('deleteBtn').addEventListener('click', async () => {
+      try {
+        write('Deleting...');
+        const key = document.getElementById('setKey').value.trim();
+        const resp = await postJSON('/api/delete', { key });
+        write(resp);
+      } catch (err) {
+        write({ error: err.message });
+      }
+    });
+    document.getElementById('resetSnapshotBtn').addEventListener('click', () => {
+      postJSON('/api/cluster/reset', {})
+        .then((resp) => {
+          write(resp);
+        })
+        .catch((err) => {
+          write({ error: err.message });
+        });
+    });
+  </script>
+</body>
+
+</html>

@@ -15,6 +15,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// TODO: debug why grpc call fails
+
 type ServerOpts struct {
 }
 
@@ -48,7 +50,7 @@ func NewServer(addr string) *Server {
 }
 
 // Start starts the grpc server and blocks.
-func (s *Server) Start() error {
+func (s *Server) Start(bootstrapNodes ...string) error {
 	ln, err := net.Listen("tcp", s.addr)
 	if err != nil {
 		return err
@@ -59,35 +61,39 @@ func (s *Server) Start() error {
 
 	fmt.Printf("[Server]: Is listening on address %s\n", s.addr)
 	go s.heartbeatLoop()
-	return s.grpcServer.Serve(ln)
+	go func() {
+		for _, bootstrapNode := range bootstrapNodes {
+			if err := s.ConnectWith(bootstrapNode); err != nil {
+				fmt.Println(err)
+			}
+		}
+	}()
+	s.grpcServer.Serve(ln)
+	return nil
 }
 
 // Stop stops the server, notifies the other peers and re-sets the keys on next server
 func (s *Server) Stop() {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	fmt.Printf("[%s]: stopping...\n", s.addr)
 
 	// stop the hearbeatloop
-	s.cancelFunc()
+	defer s.cancelFunc()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
+
+	s.mu.RLock()
 	for _, peer := range s.peers {
 		if _, err := peer.client.Leave(ctx, &cachepb.LeaveRequest{NodeAddress: s.addr}); err != nil {
 			fmt.Printf("[%s]: Error sending leave message %s %s\n", s.addr, peer.addr, err)
 		}
 	}
-
-	cache := s.cache.GetData()
+	s.mu.RUnlock()
 
 	s.hashRing.Remove(s.addr)
 
-	for k, v := range cache {
-		s.Set(ctx, &cachepb.SetRequest{
-			Key:   []byte(k),
-			Value: v.Value,
-			Ttl:   v.Ttl,
-		})
+	if err := s.rebalance(); err != nil {
+		fmt.Printf("[%s]: Error during rebalance: %s\n", s.addr, err)
 	}
 
 	for _, peer := range s.peers {
@@ -98,17 +104,18 @@ func (s *Server) Stop() {
 
 	s.cache.Stop()
 	s.grpcServer.GracefulStop()
-	fmt.Println("Stopped server")
+	fmt.Printf("[%s]: Stopped server\n", s.addr)
 }
 
 func (s *Server) Set(ctx context.Context, req *cachepb.SetRequest) (*cachepb.SetResponse, error) {
-	key := req.GetKey()
+
+	key := req.GetItem().GetKey()
 
 	serverAddr, err := s.hashRing.GetAddrFromKey(key)
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println(string(key), serverAddr, serverAddr)
 	if serverAddr != s.addr {
 		peer, ok := s.peers[serverAddr]
 		if !ok {
@@ -118,8 +125,13 @@ func (s *Server) Set(ctx context.Context, req *cachepb.SetRequest) (*cachepb.Set
 		}
 		return peer.client.Set(ctx, req)
 	}
-	fmt.Printf("[%s]: Setting %s -> %s\n", s.addr, key, req.GetValue())
-	if err := s.cache.Set(req.GetKey(), req.GetValue(), req.GetTtl()); err != nil {
+	fmt.Printf("[%s]: Setting %s -> %s\n", s.addr, key, req.Item.Value)
+	if err := s.cache.Set(&cache.Data{
+		Key:        key,
+		Value:      req.Item.Value,
+		Ttl:        req.Item.Ttl,
+		InsertedAt: req.Item.InsertedAt,
+	}); err != nil {
 		return &cachepb.SetResponse{
 			Success: false,
 		}, nil
@@ -205,12 +217,24 @@ func (s *Server) connectWith(ctx context.Context, peer string) (*Peer, *cachepb.
 		fmt.Printf("[%s]: Error connecting with %s\n", s.addr, peer)
 		return nil, nil, err
 	}
+	s.hashRing.AddServer(peer)
 
-	return &Peer{client: client, conn: conn, addr: peer}, resp, nil
+	newPeer := &Peer{client: client, conn: conn, addr: peer}
+	s.mu.Lock()
+	s.peers[peer] = newPeer
+	s.mu.Unlock()
+	// rebalance
+	if err := s.rebalance(); err != nil {
+		fmt.Printf("[%s]: Error during rebalance: %s\n", s.addr, err)
+	}
+
+	return newPeer, resp, nil
 }
 func (s *Server) Join(ctx context.Context, req *cachepb.JoinRequest) (*cachepb.JoinResponse, error) {
 	peerAddr := req.GetNodeAddress()
 	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	_, exists := s.peers[peerAddr]
 	if !exists {
 		go s.ConnectWith(peerAddr)
@@ -223,11 +247,27 @@ func (s *Server) Join(ctx context.Context, req *cachepb.JoinRequest) (*cachepb.J
 		}
 		peers = append(peers, peer)
 	}
-	s.hashRing.AddServer(peerAddr)
-	s.mu.Unlock()
 	return &cachepb.JoinResponse{PeerAddresses: peers}, nil
 }
+func (s *Server) TransferKeys(ctx context.Context, req *cachepb.TransferRequest) (*cachepb.TransferResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var nkeys int32
+	for _, item := range req.GetItems() {
+		fmt.Printf("[%s]: Setting %q->%q\n", s.addr, item.Key, item.Value)
+		if err := s.cache.Set(&cache.Data{
+			Key:        item.Key,
+			Value:      item.Value,
+			Ttl:        item.Ttl,
+			InsertedAt: item.InsertedAt,
+		}); err != nil {
+			return nil, err
+		}
+		nkeys++
+	}
 
+	return &cachepb.TransferResponse{Success: true, Nkeys: nkeys}, nil
+}
 func (s *Server) Get(ctx context.Context, req *cachepb.GetRequest) (*cachepb.GetResponse, error) {
 	key := req.GetKey()
 
@@ -310,4 +350,66 @@ func (s *Server) Leave(ctx context.Context, req *cachepb.LeaveRequest) (*cachepb
 	return &cachepb.LeaveResponse{
 		Success: true,
 	}, nil
+}
+func (s *Server) GetAll(ctx context.Context, req *cachepb.GetAllRequest) (*cachepb.GetAllResponse, error) {
+	data := s.cache.GetData()
+	items := make([]*cachepb.Item, len(data))
+	for idx, item := range data {
+		items[idx] = &cachepb.Item{
+			Key:   item.Key,
+			Value: item.Value,
+			Ttl:   item.Ttl,
+		}
+	}
+	return &cachepb.GetAllResponse{Items: items}, nil
+}
+
+func (s *Server) rebalance() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	data := s.cache.GetData()
+	keysToTransfer := make(map[string][]*cachepb.Item)
+	for _, item := range data {
+		addr, err := s.hashRing.GetAddrFromKey(item.Key)
+		if err != nil {
+			return err
+		}
+		if addr != s.addr {
+			if _, exists := keysToTransfer[addr]; !exists {
+				keysToTransfer[addr] = make([]*cachepb.Item, 0)
+			}
+			keysToTransfer[addr] = append(keysToTransfer[addr], &cachepb.Item{
+				Key:        item.Key,
+				Value:      item.Value,
+				Ttl:        item.Ttl,
+				InsertedAt: item.InsertedAt,
+			})
+		}
+	}
+	for addr, items := range keysToTransfer {
+		peer, exists := s.peers[addr]
+		if !exists {
+			fmt.Printf("[%s]: Peer doesnt exists during rebalancing %q\n", s.addr, addr)
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+
+		if _, err := peer.client.TransferKeys(ctx, &cachepb.TransferRequest{
+			Items: items,
+		}); err != nil {
+			fmt.Printf("[%s]: gRPC error while transfering keys to %q: %s\n", s.addr, addr, err)
+			cancel()
+			continue
+		}
+		cancel()
+		//TODO: what happens to the rest of the keys if error occurs in delete
+		for _, item := range items {
+			if err := s.cache.Delete(item.Key); err != nil {
+				fmt.Printf("[%s]: Error deleting key %q during rebalancing: %s\n", s.addr, addr, err)
+				break
+			}
+		}
+	}
+	return nil
 }

@@ -20,7 +20,7 @@ var (
 	client     cachepb.CacheServiceClient
 )
 var rootCmd = &cobra.Command{
-	Use:   "apispy [url]",
+	Use:   "cache-cli [usage]",
 	Short: "This CLI client serves as the primary interface for interacting with the distributed caching cluster.",
 	Long:  `This CLI provides a standard interface for performing Get, Set, and Delete operations against the cache cluster. It communicates via gRPC to any available cluster node, leveraging the cluster's internal request-forwarding and consistent hashing to manage data across multiple peers.`,
 	Example: `  # Set a value with a 10s TTL
@@ -61,9 +61,11 @@ var setCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		resp, err := client.Set(ctx, &cachepb.SetRequest{
-			Key:   []byte(key),
-			Value: []byte(val),
-			Ttl:   uint32(ttl),
+			Item: &cachepb.Item{
+				Key:   []byte(key),
+				Value: []byte(val),
+				Ttl:   uint32(ttl),
+			},
 		})
 		if err != nil {
 			fmt.Println(err)

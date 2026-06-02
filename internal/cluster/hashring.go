@@ -42,7 +42,10 @@ func (hr *HashRing) AddServer(addr string) {
 func (hr *HashRing) GetAddrFromKey(k []byte) (string, error) {
 	hr.mu.Lock()
 	defer hr.mu.Unlock()
-	pos := crc32.ChecksumIEEE([]byte(k))
+	if len(hr.keys) == 0 {
+		return "", fmt.Errorf("empty hashring")
+	}
+	pos := crc32.ChecksumIEEE(k)
 
 	idx, _ := slices.BinarySearch(hr.keys, pos)
 

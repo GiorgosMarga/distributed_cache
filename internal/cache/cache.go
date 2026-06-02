@@ -2,7 +2,6 @@ package cache
 
 import (
 	"errors"
-	"time"
 )
 
 var (
@@ -10,14 +9,15 @@ var (
 )
 
 type Data struct {
+	Key        []byte
 	Value      []byte
 	Ttl        uint32
-	ValidUntil time.Time
+	InsertedAt int64
 }
 type Cache interface {
-	Set([]byte, []byte, uint32) error
+	Set(*Data) error
 	Get([]byte) ([]byte, error)
 	Delete([]byte) error
-	GetData() map[string]*Data
+	GetData() []*Data
 	Stop()
 }

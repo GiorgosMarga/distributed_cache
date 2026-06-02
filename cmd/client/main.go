@@ -39,9 +39,11 @@ func main() {
 			for i := range messagesPerClient {
 				if rand.Intn(10) < 5 {
 					resp, err := client.Set(ctx, &cachepb.SetRequest{
-						Key:   fmt.Appendf(nil, "%s_%d", "foo", i),
-						Value: []byte("bar"),
-						Ttl:   50,
+						Item: &cachepb.Item{
+							Key:   fmt.Appendf(nil, "%s_%d", "foo", i),
+							Value: []byte("bar"),
+							Ttl:   50,
+						},
 					})
 					if err != nil {
 						fmt.Println(err)

@@ -4,7 +4,7 @@ PROTO_SRC=api/cachepb/*.proto
 GEN_OUT=gen/go
 MODULE_NAME=$(shell go list -m)
 
-.PHONY: all proto build test clean help
+.PHONY: all proto build build-ui test clean help
 
 all: proto build
 
@@ -20,7 +20,14 @@ proto:
 ## build: Build the server binary
 build:
 	@echo "Building binary..."
+	@mkdir -p bin
 	go build -o bin/$(BINARY_NAME) ./cmd/server/main.go
+
+## build-ui: Build the browser UI binary
+build-ui:
+	@echo "Building UI binary..."
+	@mkdir -p bin
+	go build -o bin/cache-ui ./cmd/ui/main.go
 
 ## test: Run all tests
 test:
